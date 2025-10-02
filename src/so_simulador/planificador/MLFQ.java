@@ -51,6 +51,10 @@ public class MLFQ implements Planificador {
         return quantums[nivel];
     }
 
+    public int getNivelesCount() {
+        return nivelesCount;
+    }
+
     // aging: incrementar espera en todas las colas y promover si excede threshold
     public void aging() {
         for (int lvl = 1; lvl < nivelesCount; lvl++) { // no promote desde nivel 0

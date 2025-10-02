@@ -7,26 +7,28 @@ import so_simulador.sincronizacion.Semaforo;
 /**
  * Proceso híbrido: soporta simulación secuencial (ejecutarQuantum/run como antes)
  * y concurrencia real con bloqueo por semáforos y E/S.
- *
- * Nota: este Proceso usa wait()/notify() internamente para bloquearse y reanudarse.
  */
 public class Proceso extends Thread {
     private PCB pcb;
     private int instruccionesTotales;
     private boolean esCPUbound;
-    private int ciclosExcepcion;   // si >0: en ese PC pedirá semáforo
-    private int ciclosAtencion;    // si >0: cada ciclosAtencion hará E/S (bloqueo gestionado por GestorES)
+    private int ciclosExcepcion;
+    private int ciclosAtencion;
     private int prioridad;
     private int tiempoLlegada;
     private int tiempoEspera;
+    
+    // Control de E/S para simulación secuencial
+    private int contadorES;  // ciclos restantes de E/S
+    private int duracionES;  // duración total de la E/S
 
     // MLFQ
     private int mlfqNivel = 0;
     private int mlfqTiempoEspera = 0;
 
     // Concurrencia
-    private Reloj reloj;           // reloj global (opcional)
-    private Semaforo recurso;      // recurso opcional (impresora, etc.)
+    private Reloj reloj;
+    private Semaforo recurso;
 
     public Proceso(String nombre, int instrucciones, boolean esCPUbound,
                    int ciclosExcepcion, int ciclosAtencion, int prioridad) {
@@ -38,6 +40,8 @@ public class Proceso extends Thread {
         this.prioridad = prioridad;
         this.tiempoLlegada = 0;
         this.tiempoEspera = 0;
+        this.contadorES = 0;
+        this.duracionES = 2; // por defecto 2 ciclos de E/S
     }
 
     // Getters / setters
@@ -49,6 +53,23 @@ public class Proceso extends Thread {
     public int getPrioridad() { return prioridad; }
     public void setTiempoLlegada(int ciclo) { this.tiempoLlegada = ciclo; }
     public int getTiempoLlegada() { return tiempoLlegada; }
+
+    // Control de E/S
+    public void iniciarES() {
+        this.contadorES = duracionES;
+    }
+    
+    public void decrementarContadorES() {
+        if (contadorES > 0) contadorES--;
+    }
+    
+    public int getContadorES() {
+        return contadorES;
+    }
+    
+    public void setDuracionES(int duracion) {
+        this.duracionES = duracion;
+    }
 
     // HRRN
     public void incrementarEspera() { this.tiempoEspera++; }
@@ -74,31 +95,25 @@ public class Proceso extends Thread {
 
     /**
      * Ejecutado cuando se inicia el Thread (modo concurrente).
-     * Soporta:
-     *  - avanzar instrucciones y ticks del reloj (si está conectado)
-     *  - bloqueo por semáforo (recurso.waitSem())
-     *  - bloqueo por E/S: registrar en GestorES y esperar notify()
      */
     @Override
     public void run() {
         pcb.setEstado(EstadoProceso.EJECUCION);
 
         while (pcb.getProgramCounter() < instruccionesTotales) {
-            // Reloj global (si está configurado)
             if (reloj != null) reloj.tick();
 
-            // Ejecuta una instrucción
             pcb.incrementarPC();
             pcb.incrementarMAR();
 
-            // --- bloqueo por semáforo si corresponde ---
+            // Bloqueo por semáforo
             if (recurso != null && ciclosExcepcion > 0 && pcb.getProgramCounter() == ciclosExcepcion) {
                 synchronized (System.out) {
                     System.out.println("[" + pcb.getNombre() + "] intentando acceder al recurso...");
                 }
 
                 pcb.setEstado(EstadoProceso.BLOQUEADO);
-                recurso.waitSem(); // bloquea hasta que signal() sea llamado sobre el semáforo
+                recurso.waitSem();
 
                 synchronized (System.out) {
                     System.out.println("[" + pcb.getNombre() + "] obtuvo el recurso ✅");
@@ -107,46 +122,35 @@ public class Proceso extends Thread {
                 pcb.setEstado(EstadoProceso.EJECUCION);
             }
 
-            // --- simulación de E/S cada cyclesAtencion instrucciones ---
+            // E/S cada ciclosAtencion instrucciones
             if (ciclosAtencion > 0 && (pcb.getProgramCounter() % ciclosAtencion) == 0 && pcb.getProgramCounter() < instruccionesTotales) {
-                // registrar en GestorES y esperar notificación (reanudarPorES)
                 synchronized (System.out) {
                     System.out.println("[" + pcb.getNombre() + "] inicia operación de E/S → BLOQUEADO");
                 }
 
                 pcb.setEstado(EstadoProceso.BLOQUEADO);
 
-                // Registrar para que sea despertado tras N ticks (aquí elegimos 3 ticks como ejemplo)
                 boolean ok = GestorES.getInstance().registrarBloqueado(this, 3);
                 if (!ok) {
-                    // si no se pudo registrar, hacemos una espera corta local (fallback)
                     try { Thread.sleep(100); } catch (InterruptedException ex) {}
                 } else {
-                    // Espera a ser reanudado por GestorES (reanudarPorES llama notify())
                     synchronized (this) {
                         try {
                             this.wait();
-                        } catch (InterruptedException e) {
-                            // continuar si es interrumpido
-                        }
+                        } catch (InterruptedException e) {}
                     }
                 }
 
-                // reanudado
                 pcb.setEstado(EstadoProceso.LISTO);
                 synchronized (System.out) {
                     System.out.println("[" + pcb.getNombre() + "] E/S completada → LISTO");
                 }
-                // El planificador/loop que usa este Proceso decidirá cuándo ejecutarlo de nuevo.
-                // En este Thread (modo simple), seguimos y continuamos ejecutando.
                 pcb.setEstado(EstadoProceso.EJECUCION);
             }
 
-            // Simulamos pequeña latencia de ejecución para ver el intercalado
             try {
                 Thread.sleep(25);
             } catch (InterruptedException e) {
-                // Si es interrumpido por suspensión podemos manejarlo aquí
                 if (pcb.getEstado() == EstadoProceso.SUSPENDIDO) {
                     synchronized (System.out) {
                         System.out.println("[" + pcb.getNombre() + "] SUSPENDIDO, esperando reanudar...");
@@ -164,7 +168,6 @@ public class Proceso extends Thread {
 
         pcb.setEstado(EstadoProceso.TERMINADO);
 
-        // Si tenía recurso, liberarlo (importante para semáforos)
         if (recurso != null) {
             recurso.signal();
             synchronized (System.out) {
@@ -177,30 +180,22 @@ public class Proceso extends Thread {
         }
     }
 
-    /**
-     * Notifica/ despierta el proceso tras E/S. Llamado por GestorES.
-     */
     public synchronized void reanudarPorES() {
         this.notify();
     }
 
-    /**
-     * Llamar para reanudar si quedó bloqueado/suspendido por otro motivo.
-     */
     public synchronized void reanudarManual() {
         this.notify();
     }
 
-    /**
-     * Suspender (cambiar estado). Para la demo, simplemente setea y
-     * interrumpe el thread; la lógica de reanudación debe llamar a reanudarManual().
-     */
     public void suspender() {
         pcb.setEstado(EstadoProceso.SUSPENDIDO);
         this.interrupt();
     }
 
-    // ejecutarQuantum se mantiene sin cambios para la simulación secuencial:
+    /**
+     * Ejecutar quantum para simulación secuencial (usado en Main.java)
+     */
     public boolean ejecutarQuantum(int quantum) {
         pcb.setEstado(EstadoProceso.EJECUCION);
         int ejecutadas = 0;
