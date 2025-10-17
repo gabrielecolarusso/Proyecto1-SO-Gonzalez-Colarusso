@@ -1,0 +1,35 @@
+{
+  "cicloDuracion": 500,
+  "memoriaTotal": 2048,
+  "memoriaPorProceso": 128,
+  "algoritmoInicial": "Round Robin",
+  "procesos": [
+    {
+      "nombre": "Proceso A",
+      "instrucciones": 10,
+      "esCPUbound": false,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 3,
+      "prioridad": 1,
+      "memoriaRequerida": 64
+    },
+    {
+      "nombre": "Proceso B",
+      "instrucciones": 15,
+      "esCPUbound": true,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 0,
+      "prioridad": 2,
+      "memoriaRequerida": 128
+    },
+    {
+      "nombre": "Proceso C",
+      "instrucciones": 8,
+      "esCPUbound": false,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 4,
+      "prioridad": 3,
+      "memoriaRequerida": 96
+    }
+  ]
+}
