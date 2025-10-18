@@ -1,0 +1,62 @@
+{
+  "cicloDuracion": 1000,
+  "memoriaTotal": 1024,
+  "memoriaPorProceso": 128,
+  "algoritmoInicial": "FCFS",
+  "procesos": [
+    {
+      "nombre": "Proceso A",
+      "instrucciones": 10,
+      "esCPUbound": false,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 3,
+      "prioridad": 3,
+      "memoriaRequerida": 128
+    },
+    {
+      "nombre": "Proceso B",
+      "instrucciones": 7,
+      "esCPUbound": true,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 0,
+      "prioridad": 1,
+      "memoriaRequerida": 128
+    },
+    {
+      "nombre": "Proceso C",
+      "instrucciones": 8,
+      "esCPUbound": false,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 4,
+      "prioridad": 2,
+      "memoriaRequerida": 128
+    },
+    {
+      "nombre": "Proceso D",
+      "instrucciones": 5,
+      "esCPUbound": true,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 0,
+      "prioridad": 4,
+      "memoriaRequerida": 128
+    },
+    {
+      "nombre": "Proceso E",
+      "instrucciones": 12,
+      "esCPUbound": false,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 3,
+      "prioridad": 5,
+      "memoriaRequerida": 128
+    },
+    {
+      "nombre": "Proceso F",
+      "instrucciones": 9,
+      "esCPUbound": true,
+      "ciclosExcepcion": 0,
+      "ciclosAtencion": 0,
+      "prioridad": 2,
+      "memoriaRequerida": 128
+    }
+  ]
+}

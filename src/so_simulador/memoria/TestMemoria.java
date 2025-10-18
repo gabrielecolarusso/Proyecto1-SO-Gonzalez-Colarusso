@@ -1,3 +1,4 @@
+// src/so_simulador/memoria/TestMemoria.java
 package so_simulador.memoria;
 
 import so_simulador.modelo.*;
@@ -15,9 +16,21 @@ public class TestMemoria {
         ColasMultinivel colas = new ColasMultinivel(gestor);
         
         // 3. Crear 10 procesos (más de los que caben en memoria)
+        // Constructor: (nombre, instrucciones, esCPUbound, ciclosExcepcion, ciclosAtencion, prioridad)
         System.out.println("--- Admitiendo 10 procesos al sistema ---");
         for (int i = 1; i <= 10; i++) {
-            Proceso p = new Proceso("Proceso " + i, 5 + i, i % 2 == 0, 0, 3, i, 128);
+            boolean esCPUbound = i % 2 == 0;  // alternados
+            int ciclosAtencion = esCPUbound ? 0 : 3;  // I/O bound tiene ciclos de atención
+            
+            Proceso p = new Proceso(
+                "Proceso " + i,     // nombre
+                5 + i,              // instrucciones
+                esCPUbound,         // esCPUbound
+                0,                  // ciclosExcepcion
+                ciclosAtencion,     // ciclosAtencion
+                i                   // prioridad
+            );
+            
             colas.admitirProceso(p);
             System.out.println("✓ " + p.getPCB().getNombre() + " admitido (estado: " + 
                              p.getPCB().getEstado() + ")");
